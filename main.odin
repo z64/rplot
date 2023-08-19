@@ -21,6 +21,11 @@ System    :: rt.System(Datum)
 Connector :: rt.Connector(Datum)
 Component :: rt.Component(Datum)
 Handler   :: #type proc(^Component, rt.Port, Datum)
+Port      :: rt.Port
+send      :: rt.send
+tran      :: rt.tran
+ENTER     :: rt.ENTER
+EXIT      :: rt.EXIT
 
 main :: proc() {
     context.logger = log.create_console_logger(
@@ -137,7 +142,7 @@ main :: proc() {
 // the simulation can be run step-by-step
 frame_counter: int
 
-extern :: proc(eh: ^Component, port: rt.Port, datum: Datum) {
+extern :: proc(eh: ^Component, port: Port, datum: Datum) {
     switch port {
     case "poll":
         buf: [256]byte
@@ -160,18 +165,18 @@ extern :: proc(eh: ^Component, port: rt.Port, datum: Datum) {
 
         switch input {
         case "b":
-            rt.send(eh, "button", BANG)
+            send(eh, "button", BANG)
         case "f":
             // just send frame pulse
         case:
             poll = false
         }
 
-        rt.send(eh, "frame", BANG)
+        send(eh, "frame", BANG)
         frame_counter += 1
 
         if poll {
-            rt.send(eh, "poll", BANG)
+            send(eh, "poll", BANG)
         }
     }
 }
@@ -188,7 +193,7 @@ Bus :: struct {
     check_frame: int,
 }
 
-bus_idle :: proc(eh: ^Component, port: rt.Port, datum: Datum) {
+bus_idle :: proc(eh: ^Component, port: Port, datum: Datum) {
     data := (^Bus)(eh.data)
     switch port {
     case rt.ENTER:
@@ -196,36 +201,36 @@ bus_idle :: proc(eh: ^Component, port: rt.Port, datum: Datum) {
             eh.data = new(Bus)
         }
     case "button":
-        rt.tran(eh, bus_wait)
+        tran(eh, bus_wait)
     case "frame":
         // ... do something on every frame while idle ...
     }
 }
 
-bus_wait :: proc(eh: ^Component, port: rt.Port, datum: Datum) {
+bus_wait :: proc(eh: ^Component, port: Port, datum: Datum) {
     data := (^Bus)(eh.data)
     switch port {
-    case rt.ENTER:
-        rt.send(eh, "query", BANG)
+    case ENTER:
+        send(eh, "query", BANG)
     case "button":
         // ignore button while loading
     case "frame":
         idle_frames := frame_counter - data.check_frame
         if idle_frames > CHECK_FRAME_INTERVAL {
             data.check_frame = frame_counter
-            rt.send(eh, "check", BANG)
+            send(eh, "check", BANG)
         }
     case "image":
         image := datum.(Image)
         data.image = image
-        rt.send(eh, "image", image)
-        rt.tran(eh, bus_idle)
+        send(eh, "image", image)
+        tran(eh, bus_idle)
     }
 }
 
 // ------------------------------------------------------------------ DISPLAY
 
-display :: proc(eh: ^Component, port: rt.Port, datum: Datum) {
+display :: proc(eh: ^Component, port: Port, datum: Datum) {
     @(static) frame_buffer: string
     switch port {
     case rt.ENTER:
@@ -249,27 +254,27 @@ R :: struct {
     image_delivery_frame: int,
 }
 
-r_idle :: proc(eh: ^Component, port: rt.Port, datum: Datum) {
+r_idle :: proc(eh: ^Component, port: Port, datum: Datum) {
     data := (^R)(eh.data)
     switch port {
-    case rt.ENTER:
+    case ENTER:
         if eh.data == nil {
             eh.data = new(R)
         }
     case "query":
-        rt.tran(eh, r_processing)
+        tran(eh, r_processing)
     }
 }
 
-r_processing :: proc(eh: ^Component, port: rt.Port, datum: Datum) {
+r_processing :: proc(eh: ^Component, port: Port, datum: Datum) {
     data := (^R)(eh.data)
     switch port {
-    case rt.ENTER:
+    case ENTER:
         data.image_delivery_frame = frame_counter + R_LATENCY_FRAMES
     case "check":
         if frame_counter >= data.image_delivery_frame {
-            rt.send(eh, "image", Image{})
-            rt.tran(eh, r_idle)
+            send(eh, "image", Image{})
+            tran(eh, r_idle)
         }
     }
 }
