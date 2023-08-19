@@ -1,5 +1,7 @@
 # rplot
 
+[Interesting bits are here](main.odin#L179-L275), the rest is bootstrapping.
+
 Run with `odin run .`
 
 - `f`, or empty input, will emit a `frame` message
