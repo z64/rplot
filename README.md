@@ -1,6 +1,6 @@
 # rplot
 
-[Interesting bits are here](main.odin#L179-L275), the rest is bootstrapping.
+[Interesting bits are here](main.odin#L184), the rest is bootstrapping.
 
 Run with `odin run .`
 
